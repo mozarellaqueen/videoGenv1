@@ -12,7 +12,9 @@ RUN git clone --depth 1 https://github.com/kijai/ComfyUI-WanVideoWrapper.git && 
     git clone --depth 1 https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git
 
 COPY constraints.txt /tmp/constraints.txt
-RUN uv pip install -c /tmp/constraints.txt \
+# --python: explizit in die Umgebung installieren, mit der ComfyUI startet (/opt/venv).
+# Ohne diese Angabe findet uv im Ordner /comfyui eine zweite Umgebung (.venv) und installiert dorthin.
+RUN uv pip install --python /opt/venv/bin/python -c /tmp/constraints.txt \
       -r ComfyUI-WanVideoWrapper/requirements.txt \
       -r ComfyUI-WanAnimatePreprocess/requirements.txt \
       -r ComfyUI-KJNodes/requirements.txt \
