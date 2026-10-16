@@ -28,6 +28,12 @@ RUN rm -rf /comfyui/models/detection /comfyui/models/sam2 /comfyui/custom_nodes/
     ln -s /runpod-volume/models/sam2 /comfyui/models/sam2 && \
     ln -s /runpod-volume/cache/vfi_ckpts /comfyui/custom_nodes/ComfyUI-Frame-Interpolation/ckpts
 
+# --- Build-Check: bricht ab, wenn ein Custom Node nicht lädt (statt erst beim ersten Job) ---
+RUN cd /comfyui && (timeout 900 python main.py --quick-test-for-ci --cpu > /tmp/ci.log 2>&1 || true) \
+    && tail -n 60 /tmp/ci.log \
+    && if grep -q "IMPORT FAILED" /tmp/ci.log; then echo "FEHLER: Custom Node konnte nicht geladen werden"; grep -B30 "IMPORT FAILED" /tmp/ci.log | head -120; exit 1; fi \
+    && python -c "import transformers, huggingface_hub, diffusers; print('transformers', transformers.__version__, '| hub', huggingface_hub.__version__, '| diffusers', diffusers.__version__)"
+
 # --- Eigener Handler (Video-Ausgabe + Upload über presigned URLs) ---
 COPY handler.py /handler.py
 
