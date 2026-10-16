@@ -1,0 +1,56 @@
+# Baut das Worker-Image auf GitHub und lädt es zu Docker Hub hoch.
+# Läuft automatisch bei jedem Commit auf main – oder manuell unter "Actions" → "Run workflow".
+# Benötigte Secrets (Repo → Settings → Secrets and variables → Actions):
+#   DOCKERHUB_USERNAME  = dein Docker-Hub-Benutzername
+#   DOCKERHUB_TOKEN     = Docker-Hub-Access-Token (Read & Write)
+name: Worker-Image bauen
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "tests/**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Speicherplatz freimachen (Image ist groß)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
+
+      - name: Code holen
+        uses: actions/checkout@v4
+
+      - name: Docker Buildx einrichten
+        uses: docker/setup-buildx-action@v3
+
+      - name: Bei Docker Hub anmelden
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Bauen und hochladen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ki-studio-worker:build-${{ github.run_number }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/ki-studio-worker:latest
+
+      - name: Image-Name für RunPod
+        run: |
+          echo "### Fertig ✅" >> $GITHUB_STEP_SUMMARY
+          echo "In RunPod als Container Image eintragen:" >> $GITHUB_STEP_SUMMARY
+          echo '`${{ secrets.DOCKERHUB_USERNAME }}/ki-studio-worker:build-${{ github.run_number }}`' >> $GITHUB_STEP_SUMMARY
