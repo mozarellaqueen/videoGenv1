@@ -1,4 +1,8 @@
-# Verhindert, dass Custom-Node-Requirements die CUDA-PyTorch-Version des Basis-Images überschreiben
+# Verhindert, dass Custom-Node-Requirements die Versionen des Basis-Images überschreiben.
+# Ohne diese Zeilen zieht die neueste diffusers-Version huggingface-hub 1.x und transformers 5.x nach,
+# womit ComfyUI 0.34 und der WanVideoWrapper nicht mehr laden ("Node ... not found").
 torch==2.11.0
 torchvision==0.26.0
 torchaudio==2.11.0
+transformers>=4.50.3,<5
+huggingface-hub<1.0
