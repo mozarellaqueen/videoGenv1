@@ -22,7 +22,18 @@ RUN uv pip install --python /opt/venv/bin/python -c /tmp/constraints.txt \
       -r ComfyUI-Frame-Interpolation/requirements-no-cupy.txt
 
 # --- Schnellere Attention für Wan (SageAttention, ca. 1,5–2x schneller auf L40S/RTX 6000 Ada/H100) ---
-RUN uv pip install --python /opt/venv/bin/python -c /tmp/constraints.txt sageattention==1.0.6
+# SageAttention nutzt Triton: das übersetzt beim ersten Lauf kleine GPU-Programme und braucht dafür
+# einen C-Compiler und die Python-Header. Der Übersetzungs-Cache liegt auf dem Volume (kein Neu-Übersetzen
+# bei jedem Kaltstart).
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && \
+    PYV=$(/opt/venv/bin/python -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")') && \
+    (apt-get install -y --no-install-recommends python${PYV}-dev || apt-get install -y --no-install-recommends python3-dev || true) && \
+    rm -rf /var/lib/apt/lists/*
+ENV CC=gcc \
+    TRITON_CACHE_DIR=/runpod-volume/cache/triton
+RUN uv pip install --python /opt/venv/bin/python -c /tmp/constraints.txt sageattention==1.0.6 && \
+    gcc --version | head -1 && \
+    /opt/venv/bin/python -c "import sysconfig, os; h = os.path.join(sysconfig.get_paths()['include'], 'Python.h'); assert os.path.exists(h), 'Python.h fehlt: ' + h; print('Python-Header OK:', h)"
 
 # --- Modellpfade: alles vom Network Volume ---
 COPY extra_model_paths.yaml /comfyui/extra_model_paths.yaml
