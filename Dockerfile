@@ -21,6 +21,9 @@ RUN uv pip install --python /opt/venv/bin/python -c /tmp/constraints.txt \
       -r ComfyUI-VideoHelperSuite/requirements.txt \
       -r ComfyUI-Frame-Interpolation/requirements-no-cupy.txt
 
+# --- Schnellere Attention für Wan (SageAttention, ca. 1,5–2x schneller auf L40S/RTX 6000 Ada/H100) ---
+RUN uv pip install --python /opt/venv/bin/python -c /tmp/constraints.txt sageattention==1.0.6
+
 # --- Modellpfade: alles vom Network Volume ---
 COPY extra_model_paths.yaml /comfyui/extra_model_paths.yaml
 # Ordner, die Nodes selbst befüllen (Pose-Modelle, SAM2, RIFE), auf das Volume umleiten,
@@ -34,7 +37,8 @@ RUN rm -rf /comfyui/models/detection /comfyui/models/sam2 /comfyui/custom_nodes/
 RUN cd /comfyui && (timeout 900 python main.py --quick-test-for-ci --cpu > /tmp/ci.log 2>&1 || true) \
     && tail -n 60 /tmp/ci.log \
     && if grep -q "IMPORT FAILED" /tmp/ci.log; then echo "FEHLER: Custom Node konnte nicht geladen werden"; grep -B30 "IMPORT FAILED" /tmp/ci.log | head -120; exit 1; fi \
-    && python -c "import transformers, huggingface_hub, diffusers; print('transformers', transformers.__version__, '| hub', huggingface_hub.__version__, '| diffusers', diffusers.__version__)"
+    && python -c "import transformers, huggingface_hub, diffusers; print('transformers', transformers.__version__, '| hub', huggingface_hub.__version__, '| diffusers', diffusers.__version__)" \
+    && /opt/venv/bin/python -c "import sageattention; print('sageattention OK')"
 
 # --- Eigener Handler (Video-Ausgabe + Upload über presigned URLs) ---
 COPY handler.py /handler.py
